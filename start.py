@@ -82,7 +82,6 @@ def log_http_error(what, exc):
 
 
 def http_get(url, **kwargs):
-    """GET that also works when the system proxy cannot be used (SOCKS without PySocks)."""
     global _PROXY_BYPASSED
     kwargs.setdefault("headers", HTTP_HEADERS)
     kwargs.setdefault("timeout", 8)
@@ -164,7 +163,6 @@ APP_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def resource_path(*parts):
-    """File shipped with the app; also works inside a PyInstaller bundle."""
     return os.path.join(getattr(sys, "_MEIPASS", APP_DIR), *parts)
 
 
@@ -210,7 +208,6 @@ def font_metrics(font):
 
 
 def _pythonw_path():
-    """pythonw.exe next to the interpreter (no console window); plain python as a fallback."""
     candidate = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
     return candidate if os.path.exists(candidate) else sys.executable
 
@@ -410,7 +407,6 @@ def ui_stylesheet(name):
 
 
 def combo_popup_stylesheet(name):
-    """The dropdown list is its own popup window: style it explicitly, not only through the app."""
     return (
         "QComboBoxPrivateContainer {{ background-color: {bg}; border: 1px solid {border};"
         " border-radius: 10px; }}"
@@ -423,7 +419,6 @@ def combo_popup_stylesheet(name):
 
 
 def color_dialog_stylesheet(name):
-    """Explicit styling for the colour picker: its labels and OK/Cancel must stay readable."""
     return (
         "QColorDialog {{ background-color: {bg}; }}"
         "QColorDialog QLabel {{ color: {text}; background: transparent; }}"
@@ -440,7 +435,6 @@ def color_dialog_stylesheet(name):
 
 
 def scroll_page(widget):
-    """Wrap a tab page in a transparent scroll area, so tall pages never squash the controls."""
     area = QScrollArea()
     area.setFrameShape(QFrame.Shape.NoFrame)
     area.setWidgetResizable(True)
@@ -451,7 +445,6 @@ def scroll_page(widget):
 
 
 def opaque_theme_color(value):
-    """Flatten a translucent theme colour onto black: native windows are not translucent."""
     color = theme_qcolor(value)
     if color.alpha() < 255:
         ratio = color.alphaF()
@@ -461,11 +454,6 @@ def opaque_theme_color(value):
 
 
 def color_dialog_palette(name):
-    """The picker's native children (spin arrows, colour wells) follow the UI palette.
-
-    Without this they kept the system palette: black panels around the wheel in the dark
-    theme and system-grey spin buttons in the light one.
-    """
     colors = ui_colors(name)
     panel = opaque_theme_color(colors["panel"])
     pal = QPalette()
@@ -484,7 +472,6 @@ def color_dialog_palette(name):
 
 
 def theme_qcolor(value):
-    """Parse '#RRGGBB' or 'rgba(r, g, b, a)' from the theme palette into a QColor."""
     value = str(value).strip()
     match = re.match(r"rgba?\(([^)]+)\)", value)
     if match:
@@ -496,7 +483,6 @@ def theme_qcolor(value):
 
 
 def gradient_stops():
-    """Colour stops of the text gradient; always at least two, up to six."""
     stops = SETTINGS.get("gradient_colors")
     if not isinstance(stops, (list, tuple)):
         stops = [SETTINGS.get("text_color", "#FFFFFF"),
@@ -512,7 +498,6 @@ def gradient_stops():
 
 
 def ease_out_back(progress):
-    """Overshooting ease: 0 -> 1 with a small bounce past 1 before settling."""
     progress = max(0.0, min(1.0, progress))
     u = progress - 1.0
     return 1.0 + 2.4 * u * u * u + 1.4 * u * u
@@ -529,7 +514,6 @@ def make_text_gradient(x0, y0, x1, y1):
 
 
 def apply_combo_popup_theme(name):
-    """Dropdown lists are separate popup windows: style every combo's view explicitly."""
     qss = combo_popup_stylesheet(name)
     for widget in QApplication.allWidgets():
         if isinstance(widget, QComboBox):
@@ -539,7 +523,6 @@ def apply_combo_popup_theme(name):
 
 
 def apply_ui_theme(name):
-    """Recolour the dialogs; the card itself is painted in UiDialog.paintEvent."""
     app = QApplication.instance()
     if app is None:
         return
@@ -634,13 +617,6 @@ class MediaTracker(QObject):
 
     @classmethod
     def _timeline_position(cls, timeline, playing=True):
-        """Position now, not the position at the last snapshot.
-
-        Browsers publish the timeline a few seconds late (Chrome updates it about once a
-        second, sometimes less), so the raw value is behind the music. `last_updated_time`
-        tells exactly how old the snapshot is and the lag can be added back. Players that
-        do not update that timestamp properly are left alone: the local clock handles them.
-        """
         try:
             pos = max(0.0, timeline.position.total_seconds())
         except Exception:
@@ -675,10 +651,6 @@ class MediaTracker(QObject):
         self._pos_trusted = True
 
     def _update_position_trust(self, pos, now):
-        """Check that the player's clock advances roughly with the real time.
-
-        A frozen / lagging timeline must not drive the lyrics: otherwise the text
-        either freezes or runs backwards (seen with AIMP)."""
         if self._samples and abs(pos - self._samples[-1][1]) > self.POS_DRIFT:
             self._samples = []
         self._samples.append((now, pos))
@@ -704,14 +676,6 @@ class MediaTracker(QObject):
                              "синхронизация по локальным часам", rate)
 
     def _position_jump(self, pos, now):
-        """Return pos if it means a seek / restart, otherwise None.
-
-        A seek must be detected even when the player's clock is untrusted (a frozen
-        timeline): otherwise switching a track leaves the local clock running from the
-        previous song's position (e.g. the lyrics stay at 0:21 while the new track is at
-        0:45). In that case only a *change* between two snapshots is trusted, so a clock
-        that simply stands still does not drag the text back.
-        """
         first = self._pos_ref is None
         if first:
             self._pos_ref = (now, pos)
@@ -820,7 +784,6 @@ class MediaTracker(QObject):
 
     @staticmethod
     async def _read_thumbnail(ref):
-        """Album art as reported by the player (AIMP reads it from the file tags)."""
         if ref is None:
             return None
         try:
@@ -971,7 +934,6 @@ class MediaTracker(QObject):
         return None
 
     def _find_lrclib(self, rid, artist, title, duration):
-        """Returns (synced_text | None, plain_text | None)."""
         t_clean = clean_title(title)
         a_full = clean_artist(artist)
         artists = unique([a_full, first_artist(a_full)])
@@ -1090,11 +1052,6 @@ class BigSpinBox(QWidget):
 
 
 class BigDoubleSpinBox(QWidget):
-    """Same look as BigSpinBox but for fractional values.
-
-    The native up/down arrows of QDoubleSpinBox are drawn by the Windows style and stayed
-    dark in the light theme, so they are replaced with themed "+"/"-" buttons.
-    """
 
     valueChanged = pyqtSignal(float)
 
@@ -1129,9 +1086,6 @@ class BigDoubleSpinBox(QWidget):
 
 
 class ThemedCheckBox(QCheckBox):
-    """Checkbox that draws its own tick: the stylesheet could only fill the box, so a
-    checked box looked exactly like a coloured square with no check mark."""
-
     BOX = 16.0
 
     def paintEvent(self, event):
@@ -1153,12 +1107,6 @@ class ThemedCheckBox(QCheckBox):
 
 
 class ChevronMixin:
-    """Draws the drop-down chevron ourselves.
-
-    Styling ``QComboBox::drop-down`` in the stylesheet removes the native arrow, so the
-    chevron is painted on top and always matches the current theme.
-    """
-
     def paintEvent(self, event):
         super().paintEvent(event)
         painter = QPainter(self)
@@ -1185,11 +1133,6 @@ class ThemedFontComboBox(ChevronMixin, QFontComboBox):
 
 
 class UiDialog(QDialog):
-    """Frameless themed dialog: one rounded card painted by the dialog itself.
-
-    Every theme (dark / light / transparent) is just a different card colour, so switching
-    themes only repaints the existing window instead of stacking a new one on top.
-    """
 
     RADIUS = 16.0
     HEADER_HEIGHT = 46
@@ -1632,7 +1575,6 @@ class SettingsDialog(UiDialog):
 
     @staticmethod
     def _style_form(form):
-        """One label column for every row: the text no longer drifts out of line."""
         form.setLabelAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         form.setFormAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
         form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow)
@@ -1657,7 +1599,6 @@ class SettingsDialog(UiDialog):
         self.auto_apply()
 
     def on_theme_changed(self, _index):
-        """Theme presets restyle the menus/dialogs; the overlay keeps the user's colours."""
         name = self.theme_combo.currentData() or "custom"
         SETTINGS["theme"] = name
         apply_ui_theme(name)
@@ -1665,7 +1606,6 @@ class SettingsDialog(UiDialog):
         self.auto_apply()
 
     def refresh_color_buttons(self):
-        """The chips keep a theme-coloured border, so repaint them when the theme changes."""
         for btn, key, white in ((self.text_color_btn, "text_color", False),
                                 (self.future_color_btn, "future_color", False),
                                 (self.bg_color_btn, "bg_color", False),
@@ -1679,10 +1619,6 @@ class SettingsDialog(UiDialog):
         self.style_action_buttons()
 
     def style_action_buttons(self):
-        """Explicit colours for the two big actions: they must never blend into the card.
-
-        In the light theme both get a deeper shade so they stay readable on white.
-        """
         colors = ui_colors()
         theme = SETTINGS.get("theme", "custom")
         if theme == "light":
@@ -1704,7 +1640,6 @@ class SettingsDialog(UiDialog):
                 f"QPushButton:hover {{ background-color: {hover}; }}")
 
     def rebuild_grad_rows(self):
-        """One chip per gradient stop, with a remove button once there are more than two."""
         while self.grad_rows.count():
             item = self.grad_rows.takeAt(0)
             widget = item.widget()
@@ -1766,11 +1701,6 @@ class SettingsDialog(UiDialog):
         self._save_grad_colors(colors)
 
     def update_btn_color(self, btn, hex_color, force_white_text=False):
-        """Compact colour chip: the swatch itself, plus a readable "Выбрать" label.
-
-        The button used to stretch into a full-width bar and a white swatch was invisible on
-        the light card, so it now keeps its own border and a fixed width.
-        """
         color = QColor(hex_color)
         if not color.isValid():
             color = QColor("#000000")
@@ -1931,7 +1861,6 @@ class LyricsWidget(QLabel):
 
     @staticmethod
     def vinyl_caption_height():
-        """Real height of the title/artist caption under the disc (fonts vary a lot)."""
         if not SETTINGS.get("vinyl_caption", True):
             return 10
         size = max(10, int(SETTINGS.get("font_size", 36)))
@@ -1966,7 +1895,6 @@ class LyricsWidget(QLabel):
 
 
     def set_unsynced(self, value):
-        """A new track arrived: show the caption again and restart its timer."""
         self.unsynced = bool(value)
         self.reset_hint()
         self.update()
@@ -2005,7 +1933,6 @@ class LyricsWidget(QLabel):
 
 
     def tick(self, dt):
-        """Advance animations; returns True when the next frame would look different."""
         animating = False
         if self.anim_t < 1.0:
             self.anim_t = min(1.0, self.anim_t + dt / ANIM_DURATION)
@@ -2091,7 +2018,6 @@ class LyricsWidget(QLabel):
         return animating
 
     def start_line(self, text):
-        """Switch to a new line: the new one slides in and fills as it is sung."""
         self.prev_text = self.current_text
         self.current_text = text
         self.visible_len = 0
@@ -2128,7 +2054,6 @@ class LyricsWidget(QLabel):
 
     @staticmethod
     def _glow_layers(painter, path, color, n):
-        """Legacy fallback: strokes are cheap but visibly banded, only used if blur fails."""
         base = min(0.5, 2.2 / n)
         for i in range(n, 0, -1):
             c = QColor(color)
@@ -2143,7 +2068,6 @@ class LyricsWidget(QLabel):
 
     @staticmethod
     def _blur_pixmap(pixmap, radius):
-        """Real gaussian-ish blur through Qt's own effect: no banding, fast enough to cache."""
         scene = QGraphicsScene()
         item = QGraphicsPixmapItem(pixmap)
         effect = QGraphicsBlurEffect()
@@ -2160,12 +2084,6 @@ class LyricsWidget(QLabel):
         return out
 
     def _get_glow_pixmap(self, text, font, color_hex, size):
-        """Soft halo rendered once per string at half resolution and cached.
-
-        The old version stacked a dozen stroked copies of the glyphs, which showed as hard
-        grey rings around the letters; this one blurs a solid mask, so the glow is smooth.
-        Returns ``(pixmap, margin, target)``; ``target`` is the logical rect to draw it in.
-        """
         if not text:
             return None, 0, QRectF()
         dpr = self.devicePixelRatioF()
@@ -2282,7 +2200,6 @@ class LyricsWidget(QLabel):
 
 
     def _status_kind(self):
-        """Service messages shown instead of lyrics: loading / not found / error."""
         text = self.current_text or ""
         if not text:
             return None
@@ -2295,7 +2212,6 @@ class LyricsWidget(QLabel):
         return None
 
     def _paint_status(self, painter, area, base_font, status, opacity_k):
-        """Animated service message: a spinner for the search, pulsing amber/red for problems."""
         if status == "search":
             text = "Поиск текста" + "." * (1 + int(self.anim_time * 3) % 3)
             color = QColor(SETTINGS.get("text_color", "#FFFFFF"))
@@ -2496,14 +2412,6 @@ class LyricsWidget(QLabel):
         painter.setOpacity(1.0)
 
     def _sides_layout(self, text, area, base_font):
-        """Scatter the words across the whole area.
-
-        Each word gets its own random spot (top, bottom-left, bottom-right, ...) and
-        flies in from the left, the right or the top.  The spots are rejection-sampled
-        over the whole area and must be visibly apart vertically, so a line never ends
-        up on a single row.  The layout is deterministic for a given line, so a word
-        never teleports between frames.
-        """
         avoid = QRectF(self._sides_avoid)
         key = (text, area.width(), area.height(),
                base_font.family(), base_font.pointSize(),
@@ -3707,7 +3615,6 @@ class LyricsOverlay(QLabel):
         self.setup_tray()
 
     def restore_position(self):
-        """Use the saved position if the window is still reachable on some screen, otherwise centre it."""
         x, y = SETTINGS.get("last_x"), SETTINGS.get("last_y")
         if isinstance(x, int) and isinstance(y, int):
             frame = QRect(x, y, self.width(), self.height())
@@ -3772,7 +3679,6 @@ class LyricsOverlay(QLabel):
             self.lyrics_editor.activateWindow()
 
     def reload_current_lyrics(self):
-        """After the editor saved a local file: drop the old lines and read them back."""
         if not self.current_title:
             return
         self.lyrics = []
@@ -3815,7 +3721,6 @@ class LyricsOverlay(QLabel):
         self.lyrics_widget.update()
 
     def on_position_update(self, pos):
-        """Only real jumps arrive here (track start / seek): snap, then keep counting locally."""
         if not self.is_playing or abs(pos - self.local_pos) > 0.5:
             self.local_pos = pos
             self.last_tick_time = time.time()
