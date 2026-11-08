@@ -1,0 +1,9 @@
+PyQt6>=6.5
+requests>=2.31
+PySocks>=1.7.1
+lyricsgenius>=3.0
+winrt-runtime>=4.0.0
+winrt-Windows.Foundation>=4.0.0
+winrt-Windows.Foundation.Collections>=4.0.0
+winrt-Windows.Media.Control>=4.0.0
+winrt-Windows.Storage.Streams>=4.0.0
