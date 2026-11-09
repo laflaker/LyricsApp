@@ -15,7 +15,6 @@ _WORD_TS_RE = re.compile(r"<\d+:\d{1,2}(?:[.:]\d+)?>")
 
 
 def clean_title(title):
-    """'Song (feat. X) - Remastered 2011' -> 'Song'."""
     t = _BRACKETS_RE.sub("", title or "")
     t = _SUFFIX_RE.sub("", t).strip()
     return t or (title or "").strip()
@@ -27,7 +26,6 @@ def clean_artist(artist):
 
 
 def first_artist(artist):
-    """'A, B & C' -> 'A'."""
     parts = _FEAT_SPLIT_RE.split(artist or "", maxsplit=1)
     return (parts[0] or "").strip() or (artist or "").strip()
 
@@ -50,13 +48,6 @@ def artist_match(wanted, found):
 
 
 def parse_lrc(text):
-    """Parse LRC into a sorted list of (seconds, text).
-
-    * accepts [mm:ss], [mm:ss.x], [mm:ss.xx], [mm:ss:xx]
-    * several stamps on one line: [00:10.0][01:20.5]text
-    * keeps empty lines (instrumental gaps) as (t, "")
-    * strips enhanced-LRC word stamps <00:12.30> and ignores tags like [ar:...]
-    """
     entries = []
     for raw in (text or "").splitlines():
         line = raw.strip()
@@ -79,11 +70,6 @@ def parse_lrc(text):
 
 
 def pick_lrclib(items, artist, duration, strict_artist=False):
-    """Choose the best LRCLIB record. Returns (synced_text | None, plain_text | None).
-
-    Records whose duration differs from the player's by more than DURATION_TOLERANCE are skipped
-    (wrong version of the song => wrong timing).
-    """
     best_synced = None
     best_plain = None
     for it in items or []:
