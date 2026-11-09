@@ -1,9 +1,3 @@
-"""Build LyricsApp-Setup.exe (payload + PyInstaller one-file installer).
-
-Usage:  python build_installer.py
-Result: dist\\LyricsApp-Setup.exe
-"""
-
 import os
 import shutil
 import subprocess
